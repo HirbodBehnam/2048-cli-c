@@ -8,17 +8,20 @@
 #define HELP "UP (w) Left (a) Down (s) Right (d)\nRestart (r) Quit (q)\n" // A simple help for user
 
 /**
- * The direction that the numbers must move_and_sum/shift
+ * The direction that the numbers must move/shift
  */
 enum DIRECTION {
     UP, LEFT, DOWN, RIGHT
 };
 
 #include <ctype.h>
+#include <locale.h>
 #include <stdbool.h>
-#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
+
+#include <curses.h>
 
 /**
  * The game board. All tiles are stored here.
@@ -30,17 +33,19 @@ int game[DIMENSION][DIMENSION];
  * Prints the game in box formatted
  */
 void print_game() {
-    printf(TOP_ROW); // prints the upper box
+    clear();
+    printw(TOP_ROW); // prints the upper box
     for (int i = 0; i < DIMENSION; i++) {
-        printf(EMPTY_ROW); // print an empty row for beatifying
-        printf(NUMBER_ROW, game[i][0], game[i][1], game[i][2], game[i][3]); // print numbers
-        printf(EMPTY_ROW); // print an empty row for beatifying
+        printw(EMPTY_ROW); // print an empty row for beatifying
+        printw(NUMBER_ROW, game[i][0], game[i][1], game[i][2], game[i][3]); // print numbers
+        printw(EMPTY_ROW); // print an empty row for beatifying
         if (i == DIMENSION - 1) // if this is the last row, close the table
-            printf(BOTTOM_ROW);
+            printw(BOTTOM_ROW);
         else // otherwise print the connector
-            printf(CONNECTOR_ROW);
+            printw(CONNECTOR_ROW);
     }
-    printf(HELP); // print help for user
+    printw(HELP); // print help for user
+    refresh();
 }
 
 /**
@@ -199,39 +204,52 @@ void move_and_sum(enum DIRECTION d) {
 }
 
 int main() {
-    // print mini help
-    puts("Press enter after each char");
+    setlocale(LC_ALL, ""); // fix boxing chars
+    initscr(); // init ncurses
+    noecho(); // disable char echo
+    cbreak(); // disable read until new line
     // set the random seed
     srand(time(0));
-    // at very first fill two cells randomly
-    random_two();
-    random_two();
-    // print the game
-    print_game();
-    while (1) {
-        char c = tolower(getchar());
-        switch (c) {
-            case 'w':
-                move_and_sum(UP);
+    // game loop
+    while(1) {
+        GAME_LOOP:
+        // at very first fill two cells randomly
+        memset(game, 0, sizeof(game));
+        random_two();
+        random_two();
+        // print the game
+        while (1) {
+            print_game();
+            char c = tolower(getch());
+            switch (c) {
+                case 'w':
+                    move_and_sum(UP);
+                    break;
+                case 'a':
+                    move_and_sum(LEFT);
+                    break;
+                case 's':
+                    move_and_sum(DOWN);
+                    break;
+                case 'd':
+                    move_and_sum(RIGHT);
+                    break;
+                case 'q':
+                    goto END;
+                case 'r':
+                    goto GAME_LOOP;
+                default:
+                    continue;
+            }
+            if (!random_two())
                 break;
-            case 'a':
-                move_and_sum(LEFT);
-                break;
-            case 's':
-                move_and_sum(DOWN);
-                break;
-            case 'd':
-                move_and_sum(RIGHT);
-                break;
-            case 'q':
-                return 0; // exit the app
-            default:
-                continue;
         }
-        if (!random_two())
+        printw("You lost! Play again? (Y/n) ");
+        refresh();
+        if (tolower(getch()) == 'n')
             break;
-        print_game();
     }
-    puts("You lost!");
+    END:
+    endwin();
     return 0;
 }
