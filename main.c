@@ -1,11 +1,13 @@
 #define DIMENSION 4
 
-#define TOP_ROW "╔════╦════╦════╦════╗\n" // The top row of table
-#define EMPTY_ROW "║    ║    ║    ║    ║\n" // Empty row to just beatify the table
-#define NUMBER_ROW "║%-4d║%-4d║%-4d║%-4d║\n" // The cell that contains the numbers
-#define CONNECTOR_ROW "╠════╬════╬════╬════╣\n" // Connects cells to cells
-#define BOTTOM_ROW "╚════╩════╩════╩════╝\n" // Bottom raw of table
+#define TOP_ROW L"╔════╦════╦════╦════╗\n" // The top row of table
+#define EMPTY_ROW L"║    ║    ║    ║    ║\n" // Empty row to just beatify the table
+#define NUMBER_ROW L"║%-4d║%-4d║%-4d║%-4d║\n" // The cell that contains the numbers
+#define CONNECTOR_ROW L"╠════╬════╬════╬════╣\n" // Connects cells to cells
+#define BOTTOM_ROW L"╚════╩════╩════╩════╝\n" // Bottom raw of table
 #define HELP "UP (w) Left (a) Down (s) Right (d)\nRestart (r) Quit (q)\n" // A simple help for user
+
+//#define NCURSES_WIDECHAR 1 // <-- Uncomment this line for development; For some reason, clion always think that this is not enabled
 
 /**
  * The direction that the numbers must move/shift
@@ -20,8 +22,13 @@ enum DIRECTION {
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <wchar.h>
 
+#ifdef __MINGW32__
+#include <ncursesw/curses.h>
+#else
 #include <curses.h>
+#endif
 
 /**
  * The game board. All tiles are stored here.
@@ -34,15 +41,21 @@ int game[DIMENSION][DIMENSION];
  */
 void print_game() {
     clear();
-    printw(TOP_ROW); // prints the upper box
+    addwstr(TOP_ROW);
     for (int i = 0; i < DIMENSION; i++) {
-        printw(EMPTY_ROW); // print an empty row for beatifying
-        printw(NUMBER_ROW, game[i][0], game[i][1], game[i][2], game[i][3]); // print numbers
-        printw(EMPTY_ROW); // print an empty row for beatifying
+        addwstr(EMPTY_ROW); // print an empty row for beatifying
+        wchar_t buffer[25];
+#ifdef __MINGW32__ // For some reason, the mingw doesn't have the size parameter?
+        swprintf(buffer, NUMBER_ROW, game[i][0], game[i][1], game[i][2], game[i][3]);
+#else
+        swprintf(buffer, 25, NUMBER_ROW, game[i][0], game[i][1], game[i][2], game[i][3]);
+#endif
+        addwstr(buffer); // print numbers
+        addwstr(EMPTY_ROW); // print an empty row for beatifying
         if (i == DIMENSION - 1) // if this is the last row, close the table
-            printw(BOTTOM_ROW);
+            addwstr(BOTTOM_ROW);
         else // otherwise print the connector
-            printw(CONNECTOR_ROW);
+            addwstr(CONNECTOR_ROW);
     }
     printw(HELP); // print help for user
     refresh();
@@ -211,7 +224,7 @@ int main() {
     // set the random seed
     srand(time(0));
     // game loop
-    while(1) {
+    while (1) {
         GAME_LOOP:
         // at very first fill two cells randomly
         memset(game, 0, sizeof(game));
@@ -220,22 +233,32 @@ int main() {
         // print the game
         while (1) {
             print_game();
-            char c = tolower(getch());
+            int c = getch();
             switch (c) {
+                case KEY_UP:
+                case 'W':
                 case 'w':
                     move_and_sum(UP);
                     break;
+                case KEY_LEFT:
+                case 'A':
                 case 'a':
                     move_and_sum(LEFT);
                     break;
+                case KEY_DOWN:
+                case 'S':
                 case 's':
                     move_and_sum(DOWN);
                     break;
+                case KEY_RIGHT:
+                case 'D':
                 case 'd':
                     move_and_sum(RIGHT);
                     break;
+                case 'Q':
                 case 'q':
                     goto END;
+                case 'R':
                 case 'r':
                     goto GAME_LOOP;
                 default:
