@@ -25,9 +25,13 @@ enum DIRECTION {
 #include <wchar.h>
 
 #ifdef __MINGW32__
+
 #include <ncursesw/curses.h>
+
 #else
+
 #include <curses.h>
+
 #endif
 
 /**
@@ -63,9 +67,10 @@ void print_game() {
 
 /**
  * Puts a two in a random position
+ * @param moved
  * @return True if successful, otherwise false
  */
-bool random_two() {
+bool random_two(bool moved) {
     struct point {
         int x, y;
     } empty_points[DIMENSION * DIMENSION];
@@ -83,9 +88,11 @@ bool random_two() {
     if (counter == 0)
         return false;
 
-    // randomly choose a place to put the
-    int random_point = rand() % counter;
-    game[empty_points[random_point].x][empty_points[random_point].y] = 2;
+    if (moved) {
+        // randomly choose a place to put the
+        int random_point = rand() % counter;
+        game[empty_points[random_point].x][empty_points[random_point].y] = 2;
+    }
     return true;
 }
 
@@ -93,20 +100,22 @@ bool random_two() {
  * Shifts all numbers to one side
  * Note that this function does not sum anything with anything else; It just shifts
  * @param d Direction to shift
+ * @return True if anything has moved
  */
-void shift_numbers(enum DIRECTION d) {
+bool shift_numbers(enum DIRECTION d) {
+    bool moved = false;
     switch (d) {
         case UP:
             for (int column = 0; column < DIMENSION; column++) {
                 for (int row = 0; row < DIMENSION; row++) {
                     // if the cell is already filled, there is no need for searching for another number
-                    if (game[row][column] !=
-                        0)
+                    if (game[row][column] != 0)
                         continue;
                     for (int searching = row + 1; searching < DIMENSION; searching++) { // search for non zero cells
                         if (game[searching][column] != 0) {
                             game[row][column] = game[searching][column]; // move_and_sum the number to row
                             game[searching][column] = 0; // empty this cell to prevent picking it up later
+                            moved = true;
                             break;
                         }
                     }
@@ -123,6 +132,7 @@ void shift_numbers(enum DIRECTION d) {
                         if (game[row][searching] != 0) {
                             game[row][column] = game[row][searching]; // move_and_sum the number to column
                             game[row][searching] = 0; // empty this cell to prevent picking it up later
+                            moved = true;
                             break;
                         }
                     }
@@ -139,6 +149,7 @@ void shift_numbers(enum DIRECTION d) {
                         if (game[searching][column] != 0) {
                             game[row][column] = game[searching][column]; // move_and_sum the number to row
                             game[searching][column] = 0; // empty this cell to prevent picking it up later
+                            moved = true;
                             break;
                         }
                     }
@@ -155,6 +166,7 @@ void shift_numbers(enum DIRECTION d) {
                         if (game[row][searching] != 0) {
                             game[row][column] = game[row][searching]; // move_and_sum the number to column
                             game[row][searching] = 0; // empty this cell to prevent picking it up later
+                            moved = true;
                             break;
                         }
                     }
@@ -162,22 +174,26 @@ void shift_numbers(enum DIRECTION d) {
             }
             break;
     }
+    return moved;
 }
 
 /**
  * Move the numbers and sum the same numbers
  * @param d in this direction
+ * @return True if anything has changed
  */
-void move_and_sum(enum DIRECTION d) {
-    shift_numbers(d); // shift to make the numbers stick to edge
+bool move_and_sum(enum DIRECTION d) {
+    bool moved1 = shift_numbers(d); // shift to make the numbers stick to edge
     // add same numbers
+    bool moved2 = false;
     switch (d) {
         case UP:
             for (int column = 0; column < DIMENSION; column++) {
                 for (int row = 0; row < DIMENSION - 1; row++) {
-                    if (game[row][column] == game[row + 1][column]) {
+                    if (game[row][column] == game[row + 1][column] && game[row][column] != 0) {
                         game[row][column] *= 2;
                         game[row + 1][column] = 0;
+                        moved2 = true;
                     }
                 }
             }
@@ -185,9 +201,10 @@ void move_and_sum(enum DIRECTION d) {
         case LEFT:
             for (int row = 0; row < DIMENSION; row++) {
                 for (int column = 0; column < DIMENSION - 1; column++) {
-                    if (game[row][column] == game[row][column + 1]) {
+                    if (game[row][column] == game[row][column + 1] && game[row][column] != 0) {
                         game[row][column] *= 2;
                         game[row][column + 1] = 0;
+                        moved2 = true;
                     }
                 }
             }
@@ -195,9 +212,10 @@ void move_and_sum(enum DIRECTION d) {
         case DOWN:
             for (int column = 0; column < DIMENSION; column++) {
                 for (int row = DIMENSION - 1; row > 0; row--) {
-                    if (game[row][column] == game[row - 1][column]) {
+                    if (game[row][column] == game[row - 1][column] && game[row][column] != 0) {
                         game[row][column] *= 2;
                         game[row - 1][column] = 0;
+                        moved2 = true;
                     }
                 }
             }
@@ -205,15 +223,17 @@ void move_and_sum(enum DIRECTION d) {
         case RIGHT:
             for (int row = 0; row < DIMENSION; row++) {
                 for (int column = DIMENSION - 1; column > 0; column--) {
-                    if (game[row][column] == game[row][column - 1]) {
+                    if (game[row][column] == game[row][column - 1] && game[row][column] != 0) {
                         game[row][column] *= 2;
                         game[row][column - 1] = 0;
+                        moved2 = true;
                     }
                 }
             }
             break;
     }
     shift_numbers(d); // shift to make the numbers stick to edge again
+    return moved1 || moved2;
 }
 
 int main() {
@@ -228,32 +248,33 @@ int main() {
         GAME_LOOP:
         // at very first fill two cells randomly
         memset(game, 0, sizeof(game));
-        random_two();
-        random_two();
+        random_two(true);
+        random_two(true);
         // print the game
         while (1) {
             print_game();
             int c = getch();
+            bool moved;
             switch (c) {
                 case KEY_UP:
                 case 'W':
                 case 'w':
-                    move_and_sum(UP);
+                    moved = move_and_sum(UP);
                     break;
                 case KEY_LEFT:
                 case 'A':
                 case 'a':
-                    move_and_sum(LEFT);
+                    moved = move_and_sum(LEFT);
                     break;
                 case KEY_DOWN:
                 case 'S':
                 case 's':
-                    move_and_sum(DOWN);
+                    moved = move_and_sum(DOWN);
                     break;
                 case KEY_RIGHT:
                 case 'D':
                 case 'd':
-                    move_and_sum(RIGHT);
+                    moved = move_and_sum(RIGHT);
                     break;
                 case 'Q':
                 case 'q':
@@ -264,7 +285,7 @@ int main() {
                 default:
                     continue;
             }
-            if (!random_two())
+            if (!random_two(moved)) // we must have moved then we should add a 2
                 break;
         }
         printw("You lost! Play again? (Y/n) ");
