@@ -16,7 +16,6 @@ enum DIRECTION {
     UP, LEFT, DOWN, RIGHT
 };
 
-#include <ctype.h>
 #include <locale.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -41,6 +40,15 @@ enum DIRECTION {
 int game[DIMENSION][DIMENSION];
 
 /**
+ * Converts a char to lower
+ * @param c Char to convert
+ * @return
+ */
+int to_lower(int c) {
+    return c >= 'A' && c <= 'Z' ? 'a' - 'A' + c : c;
+}
+
+/**
  * Prints the game in box formatted
  */
 void print_game() {
@@ -63,6 +71,19 @@ void print_game() {
     }
     printw(HELP); // print help for user
     refresh();
+}
+
+/**
+ * Checks if there is a 2048 in the game
+ * @return Returns if there is one
+ */
+bool won_game() {
+    for (int i = 0; i < DIMENSION; i++)
+        for (int j = 0; j < DIMENSION; j++)
+            if (game[i][j] == 2048)
+                return true;
+
+    return false;
 }
 
 /**
@@ -253,44 +274,43 @@ int main() {
         // print the game
         while (1) {
             print_game();
-            int c = getch();
+            int c = to_lower(getch());
             bool moved;
             switch (c) {
                 case KEY_UP:
-                case 'W':
                 case 'w':
                     moved = move_and_sum(UP);
                     break;
                 case KEY_LEFT:
-                case 'A':
                 case 'a':
                     moved = move_and_sum(LEFT);
                     break;
                 case KEY_DOWN:
-                case 'S':
                 case 's':
                     moved = move_and_sum(DOWN);
                     break;
                 case KEY_RIGHT:
-                case 'D':
                 case 'd':
                     moved = move_and_sum(RIGHT);
                     break;
-                case 'Q':
                 case 'q':
                     goto END;
-                case 'R':
                 case 'r':
                     goto GAME_LOOP;
                 default:
                     continue;
             }
-            if (!random_two(moved)) // we must have moved then we should add a 2
+            if (won_game()) { // check if the user has won the game
+                printw("You won! Play again? (Y/n)");
                 break;
+            }
+            if (!random_two(moved)) { // we must have moved then we should add a
+                printw("You lost! Play again? (Y/n)");
+                break;
+            }
         }
-        printw("You lost! Play again? (Y/n) ");
         refresh();
-        if (tolower(getch()) == 'n')
+        if (to_lower(getch()) == 'n')
             break;
     }
     END:
