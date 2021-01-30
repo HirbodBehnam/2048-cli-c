@@ -2,7 +2,7 @@
 
 #define TOP_ROW L"╔════╦════╦════╦════╗\n" // The top row of table
 #define EMPTY_ROW L"║    ║    ║    ║    ║\n" // Empty row to just beatify the table
-#define NUMBER_ROW L"║%-4d║%-4d║%-4d║%-4d║\n" // The cell that contains the numbers
+#define NUMBER_ROW L"║%-4hd║%-4hd║%-4hd║%-4hd║\n" // The cell that contains the numbers
 #define CONNECTOR_ROW L"╠════╬════╬════╬════╣\n" // Connects cells to cells
 #define BOTTOM_ROW L"╚════╩════╩════╩════╝\n" // Bottom raw of table
 #define HELP "UP (w) Left (a) Down (s) Right (d)\nRestart (r) Quit (q)\n" // A simple help for user
@@ -16,6 +16,7 @@ enum DIRECTION {
     UP, LEFT, DOWN, RIGHT
 };
 
+#include <ctype.h>
 #include <locale.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -37,16 +38,7 @@ enum DIRECTION {
  * The game board. All tiles are stored here.
  * 0 Tiles means empty
  */
-int game[DIMENSION][DIMENSION];
-
-/**
- * Converts a char to lower
- * @param c Char to convert
- * @return
- */
-int to_lower(int c) {
-    return c >= 'A' && c <= 'Z' ? 'a' - 'A' + c : c;
-}
+short game[DIMENSION][DIMENSION];
 
 /**
  * Prints the game in box formatted
@@ -274,7 +266,7 @@ int main() {
         // print the game
         while (1) {
             print_game();
-            int c = to_lower(getch());
+            int c = tolower(getch());
             bool moved;
             switch (c) {
                 case KEY_UP:
@@ -310,7 +302,7 @@ int main() {
             }
         }
         refresh();
-        if (to_lower(getch()) == 'n')
+        if (tolower(getch()) == 'n')
             break;
     }
     END:
